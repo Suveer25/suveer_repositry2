@@ -217,6 +217,20 @@ app.get('/api/tie-points', (req, res) => {
   res.json(tiePoints);
 });
 
+// Municipal Property Tax Records Upload & Reconciliation Endpoint
+app.post('/api/tax-records/upload', (req, res) => {
+  const { records, parcels: updatedParcels } = req.body;
+  if (Array.isArray(updatedParcels) && updatedParcels.length > 0) {
+    parcels = updatedParcels;
+  }
+  res.json({
+    success: true,
+    message: `Processed and reconciled ${records?.length || 0} municipal tax records`,
+    totalParcels: parcels.length,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.post('/api/tie-points', (req, res) => {
   const { sourceX, sourceY, targetLng, targetLat, type } = req.body;
   const newPoint = {

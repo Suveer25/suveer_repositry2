@@ -12,6 +12,7 @@ import { ClusterTelemetry } from './components/ClusterTelemetry';
 import { TitlingCertificateModal } from './components/TitlingCertificateModal';
 import { AiAuditModal } from './components/AiAuditModal';
 import { DroneImageUploadModal, SAMPLE_DRONE_PRESETS } from './components/DroneImageUploadModal';
+import { TaxRecordUploadModal } from './components/TaxRecordUploadModal';
 
 import { 
   mockCadastralParcels, 
@@ -19,7 +20,8 @@ import {
   mockClusterStatus, 
   mockTiePoints 
 } from './data/mockCadastralData';
-import { Parcel, ETLJob, ClusterStatus, TiePoint, DroneImageData } from './types';
+import { Parcel, ETLJob, ClusterStatus, TiePoint, DroneImageData, TaxRecord } from './types';
+import { generateParcelsForWard } from './data/urbanWardsList';
 
 export default function App() {
   // State variables
@@ -39,6 +41,10 @@ export default function App() {
   // Drone Orthomosaic State (null by default; only loads when user uploads from file explorer)
   const [droneImage, setDroneImage] = useState<DroneImageData | null>(null);
   const [isUploadDroneModalOpen, setIsUploadDroneModalOpen] = useState<boolean>(false);
+
+  // Municipal Tax Record State & Modal
+  const [isUploadTaxModalOpen, setIsUploadTaxModalOpen] = useState<boolean>(false);
+  const [taxTargetParcel, setTaxTargetParcel] = useState<Parcel | null>(null);
   
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
@@ -78,6 +84,27 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
+
+  const handleSelectWard = (wardNo: string) => {
+    setSelectedWard(wardNo);
+    if (wardNo !== 'ALL') {
+      const existing = parcels.filter(p => p.wardNo.toLowerCase().includes(wardNo.toLowerCase()));
+      if (existing.length > 0) {
+        setSelectedParcel(existing[0]);
+        showNotification(`Switched to ${wardNo} (${existing.length} Cadastral Parcels)`, 'info');
+      } else {
+        const generated = generateParcelsForWard(wardNo);
+        if (generated.length > 0) {
+          setParcels(prev => [...prev, ...generated]);
+          setSelectedParcel(generated[0]);
+          showNotification(`Loaded ${wardNo} — Cadastral vector layer initialized from PostGIS`, 'info');
+        }
+      }
+    } else {
+      setSelectedParcel(parcels[0] || null);
+      showNotification(`Viewing All Urban Wards — Regional Cadastral Grid Active`, 'info');
+    }
+  };
 
   // Filtered parcels based on search query and status filter
   const filteredParcels = parcels.filter(p => {
@@ -269,6 +296,28 @@ export default function App() {
     }
   };
 
+  const handleOpenUploadTaxRecord = (target?: Parcel) => {
+    setTaxTargetParcel(target || selectedParcel || null);
+    setIsUploadTaxModalOpen(true);
+  };
+
+  const handleApplyTaxRecords = (records: TaxRecord[], updatedParcels: Parcel[]) => {
+    setParcels(updatedParcels);
+    if (selectedParcel) {
+      const updatedSelected = updatedParcels.find(p => p.id === selectedParcel.id);
+      if (updatedSelected) setSelectedParcel(updatedSelected);
+    }
+    showNotification(`Uploaded and reconciled ${records.length} Municipal Property Tax Record(s) from file explorer.`);
+
+    fetch('/api/tax-records/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records, parcels: updatedParcels })
+    }).catch(() => {});
+  };
+
+  const hasTaxRecords = parcels.some(p => !!p.taxRecord);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30">
       
@@ -284,7 +333,7 @@ export default function App() {
       <Header 
         parcels={parcels} 
         selectedWard={selectedWard}
-        onSelectWard={setSelectedWard}
+        onSelectWard={handleSelectWard}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onSelectParcel={(p) => {
@@ -295,6 +344,8 @@ export default function App() {
         onOpenNewJob={() => setActiveTab('etl-celery')}
         onOpenUploadDrone={() => setIsUploadDroneModalOpen(true)}
         droneImage={droneImage}
+        onOpenUploadTaxRecord={() => handleOpenUploadTaxRecord()}
+        hasTaxRecords={hasTaxRecords}
       />
 
       {/* Module Navigation Tabs */}
@@ -321,6 +372,7 @@ export default function App() {
             droneImage={droneImage}
             onOpenUploadDrone={() => setIsUploadDroneModalOpen(true)}
             onUpdateDroneOpacity={handleUpdateDroneOpacity}
+            onOpenUploadTaxRecord={handleOpenUploadTaxRecord}
           />
         )}
 
@@ -407,6 +459,15 @@ export default function App() {
       <AiAuditModal
         parcel={auditParcel}
         onClose={() => setAuditParcel(null)}
+      />
+
+      {/* Municipal Property Tax Record Upload Modal (File Explorer .CSV, .JSON, .PDF, .XLSX) */}
+      <TaxRecordUploadModal
+        isOpen={isUploadTaxModalOpen}
+        onClose={() => setIsUploadTaxModalOpen(false)}
+        parcels={parcels}
+        onApplyTaxRecords={handleApplyTaxRecords}
+        selectedParcel={taxTargetParcel}
       />
 
     </div>

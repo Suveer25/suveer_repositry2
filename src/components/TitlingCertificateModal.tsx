@@ -116,7 +116,11 @@ export const TitlingCertificateModal: React.FC<TitlingCertificateModalProps> = (
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-slate-500 font-medium block">Zoning Classification:</span>
                 <span className="text-sm font-bold text-slate-800 block">{parcel.landUse}</span>
-                <span className="text-[11px] text-slate-500 block">Property Tax ID: TX-2026-9843-01</span>
+                <span className="text-[11px] text-slate-500 block truncate">
+                  {parcel.taxRecord 
+                    ? `Tax Assessment: ${parcel.taxRecord.assessmentNo} (${parcel.taxRecord.paymentStatus})`
+                    : 'Property Tax ID: Pending Registration'}
+                </span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">

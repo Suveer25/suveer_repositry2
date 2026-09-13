@@ -48,6 +48,28 @@ export interface TopologyIssue {
   resolved: boolean;
 }
 
+export interface TaxRecord {
+  id: string;
+  assessmentNo: string; // e.g., 'PMC-PT-2026-9843-01'
+  assessmentYear: string; // e.g., '2025-2026'
+  taxpayerName: string;
+  propertyAddress: string;
+  wardZone: string;
+  ratableValueAnnual: number;
+  assessedTaxAmount: number;
+  paymentStatus: 'PAID' | 'DUE' | 'PARTIAL' | 'EXEMPT';
+  lastPaidDate?: string;
+  receiptNumber?: string;
+  assessedBuiltUpAreaSqm: number;
+  carpetAreaSqm?: number;
+  usageCategory: 'Residential' | 'Commercial' | 'Mixed Use' | 'Industrial' | 'Exempt Institutional';
+  sourceFile?: string;
+  uploadedAt: string;
+  verifiedWithDroneBoundary?: boolean;
+  areaVarianceWithSurveySqm?: number;
+  notes?: string;
+}
+
 export interface Parcel {
   id: string;
   ulpin: string; // 14-digit Unique Land Parcel Identification Number (Bhu-Aadhaar)
@@ -72,6 +94,7 @@ export interface Parcel {
   dsmElevationMeters: number;
   buildings: BuildingFootprint[];
   verticalUnits?: VerticalUnit[];
+  taxRecord?: TaxRecord;
   topologyIssues: TopologyIssue[];
   lastHarmonizedAt: string;
   surveyorNotes: string;

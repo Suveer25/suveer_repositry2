@@ -18,7 +18,8 @@ import {
   EyeOff,
   Maximize2,
   Upload,
-  Camera
+  Camera,
+  Receipt
 } from 'lucide-react';
 import { Parcel, Coordinate, DroneImageData } from '../types';
 
@@ -33,6 +34,7 @@ interface WebGisMapProps {
   droneImage?: DroneImageData | null;
   onOpenUploadDrone?: () => void;
   onUpdateDroneOpacity?: (opacity: number) => void;
+  onOpenUploadTaxRecord?: (parcel?: Parcel) => void;
 }
 
 export const WebGisMap: React.FC<WebGisMapProps> = ({
@@ -45,7 +47,8 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
   onOpenCertificate,
   droneImage,
   onOpenUploadDrone,
-  onUpdateDroneOpacity
+  onUpdateDroneOpacity,
+  onOpenUploadTaxRecord
 }) => {
   // Map viewport state (Pan & Zoom)
   const [zoom, setZoom] = useState(1);
@@ -75,14 +78,34 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Coordinate bounding box for conversion to SVG space
-  // Base Ward 14 envelope: Lng 73.8520 to 73.8630, Lat 18.5185 to 18.5255
-  const bounds = {
-    minLng: 73.8525,
-    maxLng: 73.8625,
-    minLat: 18.5190,
-    maxLat: 18.5250
-  };
+  // Coordinate bounding box for conversion to SVG space (dynamically calculated from visible parcels)
+  const bounds = useMemo(() => {
+    if (!parcels || parcels.length === 0) {
+      return {
+        minLng: 73.8525,
+        maxLng: 73.8625,
+        minLat: 18.5190,
+        maxLat: 18.5250
+      };
+    }
+    let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+    parcels.forEach(p => {
+      p.polygon.forEach(c => {
+        if (c.lng < minLng) minLng = c.lng;
+        if (c.lng > maxLng) maxLng = c.lng;
+        if (c.lat < minLat) minLat = c.lat;
+        if (c.lat > maxLat) maxLat = c.lat;
+      });
+    });
+    const padLng = Math.max((maxLng - minLng) * 0.12, 0.002);
+    const padLat = Math.max((maxLat - minLat) * 0.12, 0.002);
+    return {
+      minLng: minLng - padLng,
+      maxLng: maxLng + padLng,
+      minLat: minLat - padLat,
+      maxLat: maxLat + padLat
+    };
+  }, [parcels]);
 
   const svgWidth = 1000;
   const svgHeight = 700;
@@ -836,6 +859,83 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Municipal Tax Record Reconciliation */}
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="text-slate-300 font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs text-amber-300">
+                  <Receipt className="h-3.5 w-3.5 text-amber-400" />
+                  Municipal Tax Assessment
+                </span>
+                {selectedParcel.taxRecord ? (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    selectedParcel.taxRecord.paymentStatus === 'PAID'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : selectedParcel.taxRecord.paymentStatus === 'EXEMPT'
+                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  }`}>
+                    {selectedParcel.taxRecord.paymentStatus}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500">Unlinked</span>
+                )}
+              </div>
+
+              {selectedParcel.taxRecord ? (
+                <div className="space-y-1.5 text-xs">
+                  <div className="p-2 rounded bg-slate-900 border border-slate-800/80 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-[11px]">Assessment No:</span>
+                      <span className="font-mono text-slate-200 font-semibold text-[11px]">{selectedParcel.taxRecord.assessmentNo}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-[11px]">Taxpayer:</span>
+                      <span className="text-slate-300 truncate max-w-[150px]">{selectedParcel.taxRecord.taxpayerName}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-[11px]">Annual Tax:</span>
+                      <span className="text-amber-300 font-mono font-medium">₹{selectedParcel.taxRecord.assessedTaxAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 text-[11px]">Tax Built-Up Area:</span>
+                      <span className="text-emerald-400 font-mono font-semibold">{selectedParcel.taxRecord.assessedBuiltUpAreaSqm.toFixed(1)} m²</span>
+                    </div>
+                    {selectedParcel.taxRecord.receiptNumber && (
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5 border-t border-slate-800">
+                        <span>Receipt No:</span>
+                        <span className="font-mono text-slate-300">{selectedParcel.taxRecord.receiptNumber}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {onOpenUploadTaxRecord && (
+                    <button
+                      onClick={() => onOpenUploadTaxRecord(selectedParcel)}
+                      className="w-full py-1.5 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Receipt className="h-3 w-3" />
+                      <span>Upload / Replace Tax Record</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-slate-400">
+                    No municipal tax assessment or PTIS receipt currently linked to this parcel.
+                  </p>
+                  {onOpenUploadTaxRecord && (
+                    <button
+                      onClick={() => onOpenUploadTaxRecord(selectedParcel)}
+                      className="w-full py-1.5 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Receipt className="h-3 w-3" />
+                      <span>Upload Tax Record from File Explorer</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Topology Anomalies (if any) */}
