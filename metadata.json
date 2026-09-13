@@ -1,0 +1,8 @@
+{
+  "name": "GeoHarmonize: Urban Land Record Intelligence",
+  "description": "Automated integration, AI rubber-sheeting, SAM & YOLOv8 parcel delineation, PostGIS spatial indexing, and OGC harmonization for urban land records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
