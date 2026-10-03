@@ -96,7 +96,11 @@ ${parcel.taxRecord ? `- **Assessment No:** ${parcel.taxRecord.assessmentNo} (${p
   };
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (err) {
+      console.warn('Window print is not permitted in this iframe context:', err);
+    }
   };
 
   return (

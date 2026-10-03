@@ -13,7 +13,8 @@ import {
   Camera,
   Receipt,
   Building2,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import { Parcel, DroneImageData } from '../types';
 import { WardSelectModal } from './WardSelectModal';
@@ -32,6 +33,7 @@ interface HeaderProps {
   droneImage?: DroneImageData | null;
   onOpenUploadTaxRecord?: () => void;
   hasTaxRecords?: boolean;
+  onOpenDatasetPdf?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenUploadDrone,
   droneImage,
   onOpenUploadTaxRecord,
-  hasTaxRecords
+  hasTaxRecords,
+  onOpenDatasetPdf
 }) => {
   const [isWardModalOpen, setIsWardModalOpen] = useState(false);
 
@@ -256,21 +259,26 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Actions */}
+          {/* AI Drone Border Studio Trigger */}
           {onOpenUploadDrone && (
             <button
               onClick={onOpenUploadDrone}
               id="header-upload-drone-btn"
               className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                droneImage?.sourceType === 'custom_upload'
+                droneImage
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
                   : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-emerald-500/40'
               }`}
-              title="Upload Drone Image from File Explorer"
+              title="Upload Drone Image & Run AI Model to Detect and Bound Borders"
             >
               <Upload className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Upload Drone Image</span>
-              {droneImage?.sourceType === 'custom_upload' && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="hidden sm:inline">
+                {droneImage ? 'AI Drone Borders' : 'Upload Drone & Bound'}
+              </span>
+              {droneImage && (
+                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-400/40">
+                  {droneImage.detectedBorders?.length ? `${droneImage.detectedBorders.length} Bounded` : 'Loaded'}
+                </span>
               )}
             </button>
           )}
@@ -310,6 +318,21 @@ export const Header: React.FC<HeaderProps> = ({
             <FileCheck2 className="h-3.5 w-3.5 text-emerald-400" />
             <span className="hidden md:inline">Bhu-Aadhaar</span>
           </button>
+
+          {onOpenDatasetPdf && (
+            <button
+              onClick={onOpenDatasetPdf}
+              id="header-datasets-pdf-btn"
+              className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-2.5 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer border border-emerald-400/30"
+              title="View, Preview, and Download Drone & Cadastral Datasets Catalog in PDF Format"
+            >
+              <FileText className="h-3.5 w-3.5 text-white" />
+              <span className="font-semibold">Datasets (PDF)</span>
+              <span className="hidden lg:inline text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-200 border border-emerald-300/40">
+                Ready
+              </span>
+            </button>
+          )}
         </div>
 
       </div>

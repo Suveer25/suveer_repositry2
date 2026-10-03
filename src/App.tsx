@@ -11,8 +11,9 @@ import { OgcRegistryView } from './components/OgcRegistryView';
 import { ClusterTelemetry } from './components/ClusterTelemetry';
 import { TitlingCertificateModal } from './components/TitlingCertificateModal';
 import { AiAuditModal } from './components/AiAuditModal';
-import { DroneImageUploadModal, SAMPLE_DRONE_PRESETS } from './components/DroneImageUploadModal';
+import { DroneBorderDetectionStudio } from './components/DroneBorderDetectionStudio';
 import { TaxRecordUploadModal } from './components/TaxRecordUploadModal';
+import { DatasetListPdfModal } from './components/DatasetListPdfModal';
 
 import { 
   mockCadastralParcels, 
@@ -46,6 +47,9 @@ export default function App() {
   const [isUploadTaxModalOpen, setIsUploadTaxModalOpen] = useState<boolean>(false);
   const [taxTargetParcel, setTaxTargetParcel] = useState<Parcel | null>(null);
   
+  // Dataset Directory PDF Modal
+  const [isDatasetPdfModalOpen, setIsDatasetPdfModalOpen] = useState<boolean>(false);
+
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
   const showNotification = (message: string, type: 'success' | 'info' = 'success') => {
@@ -285,6 +289,26 @@ export default function App() {
     showNotification(`Drone orthomosaic "${newImage.name}" loaded successfully! Synchronized across 2D Map, LoFTR, and GeoAI.`);
   };
 
+  const handleCommitDetectedParcels = (newParcels: Parcel[], droneData: DroneImageData) => {
+    setParcels(prev => {
+      const existingIds = new Set(newParcels.map(p => p.id));
+      const filteredPrev = prev.filter(p => !existingIds.has(p.id));
+      return [...newParcels, ...filteredPrev];
+    });
+
+    if (newParcels.length > 0) {
+      setSelectedParcel(newParcels[0]);
+    }
+
+    setDroneImage(droneData);
+    setActiveTab('map-2d');
+
+    showNotification(
+      `AI Model detected & bounded ${newParcels.length} parcel border(s)! Committed to GIS map layer without background wallpaper.`,
+      'success'
+    );
+  };
+
   const handleRemoveDroneImage = () => {
     setDroneImage(null);
     showNotification('Drone image layer removed. Displaying base vector grid.', 'info');
@@ -346,6 +370,7 @@ export default function App() {
         droneImage={droneImage}
         onOpenUploadTaxRecord={() => handleOpenUploadTaxRecord()}
         hasTaxRecords={hasTaxRecords}
+        onOpenDatasetPdf={() => setIsDatasetPdfModalOpen(true)}
       />
 
       {/* Module Navigation Tabs */}
@@ -440,12 +465,13 @@ export default function App() {
 
       </main>
 
-      {/* Drone Image Upload Modal (File Explorer & GeoTIFF/PNG/JPG) */}
-      <DroneImageUploadModal
+      {/* AI Drone Border & Boundary Bounding Studio (Extracts Bounded Borders without wallpaper) */}
+      <DroneBorderDetectionStudio
         isOpen={isUploadDroneModalOpen}
         onClose={() => setIsUploadDroneModalOpen(false)}
         currentImage={droneImage}
-        onApplyDroneImage={handleApplyDroneImage}
+        selectedWard={selectedWard}
+        onCommitDetectedParcels={handleCommitDetectedParcels}
         onRemoveDroneImage={handleRemoveDroneImage}
       />
 
@@ -468,6 +494,12 @@ export default function App() {
         parcels={parcels}
         onApplyTaxRecords={handleApplyTaxRecords}
         selectedParcel={taxTargetParcel}
+      />
+
+      {/* Dataset List Reference Directory (PDF Viewer & Exporter) */}
+      <DatasetListPdfModal
+        isOpen={isDatasetPdfModalOpen}
+        onClose={() => setIsDatasetPdfModalOpen(false)}
       />
 
     </div>

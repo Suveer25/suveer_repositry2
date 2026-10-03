@@ -24,7 +24,11 @@ export const TitlingCertificateModal: React.FC<TitlingCertificateModalProps> = (
   if (!parcel) return null;
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (err) {
+      console.warn('Window print is not permitted in this iframe context:', err);
+    }
   };
 
   return (

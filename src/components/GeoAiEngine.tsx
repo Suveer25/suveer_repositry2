@@ -277,19 +277,35 @@ export const GeoAiEngine: React.FC<GeoAiEngineProps> = ({
             onClick={handleAddPrompt}
             className={`w-full h-full ${activeModel === 'SAM' ? 'cursor-crosshair' : 'cursor-default'}`}
           >
-            {/* Technical Viewport Background */}
-            {droneImage ? (
-              <image 
-                href={droneImage.url} 
-                x="0" 
-                y="0" 
-                width="800" 
-                height="500" 
-                preserveAspectRatio="xMidYMid slice" 
-                opacity={droneImage.opacity ?? 0.88} 
-              />
-            ) : (
-              <rect width="800" height="500" fill="#0b1120" />
+            {/* Base Technical GIS Viewport (Always clean dark vector grid, never wallpaper) */}
+            <rect width="800" height="500" fill="#0b1120" />
+
+            {/* Bounded Aerial Footprint for Drone Image */}
+            {droneImage && (
+              <g className="bounded-drone-ortho">
+                <image 
+                  href={droneImage.url} 
+                  x="80" 
+                  y="50" 
+                  width="640" 
+                  height="400" 
+                  preserveAspectRatio="xMidYMid slice" 
+                  opacity={droneImage.opacity ?? 0.88} 
+                />
+                <rect 
+                  x="80" 
+                  y="50" 
+                  width="640" 
+                  height="400" 
+                  fill="none" 
+                  stroke="#10b981" 
+                  strokeWidth="2" 
+                  strokeDasharray="6 4" 
+                />
+                <text x="86" y="42" fill="#34d399" fontSize="11" fontWeight="bold" fontFamily="monospace">
+                  [BOUNDED DRONE SURVEY FRAME] • {droneImage.resolutionGsd}
+                </text>
+              </g>
             )}
             
             {/* Technical Coordinate Grid */}

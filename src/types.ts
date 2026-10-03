@@ -166,6 +166,34 @@ export interface ClusterStatus {
   redisQueueDepth: number;
 }
 
+export interface BoundedBorderPolygon {
+  id: string;
+  label: string;
+  classification: 'Cadastral_Boundary' | 'Agricultural_Ridge' | 'Compound_Wall' | 'Building_Footprint' | 'Road_Corridor';
+  confidence: number;
+  normalizedPolygon: { x: number; y: number }[]; // 0..1 relative to image width & height
+  bbox: [number, number, number, number]; // [minX, minY, maxX, maxY] normalized 0..1
+  estimatedAreaSqm: number;
+  perimeterMeters: number;
+  cornerStones: { id: string; x: number; y: number; label: string }[];
+  geoPolygon?: Coordinate[];
+  color: string;
+  isEncroached?: boolean;
+}
+
+export interface DroneBoundaryDetectionResult {
+  imageId: string;
+  imageName: string;
+  dimensions: { width: number; height: number };
+  detectedBorders: BoundedBorderPolygon[];
+  overallConfidence: number;
+  modelUsed: 'SAM_ViT_Huge' | 'Gemini_Vision_AI' | 'Canny_Contour_Detector' | 'Hybrid_GeoAI';
+  processingTimeMs: number;
+  boundaryCount: number;
+  totalAreaSqm: number;
+  status: 'detected' | 'committed';
+}
+
 export interface DroneImageData {
   id: string;
   name: string;
@@ -178,4 +206,7 @@ export interface DroneImageData {
   crs: string;
   opacity: number;
   sourceType: 'custom_upload' | 'sample_orthomosaic';
+  detectedBorders?: BoundedBorderPolygon[];
+  geoBoundingBox?: [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+  isBounded?: boolean;
 }

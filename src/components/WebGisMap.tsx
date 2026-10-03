@@ -124,6 +124,30 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
     return { lng, lat };
   };
 
+  // Georeferenced Bounded Footprint for Drone Image (Bounded extent, never stretched as map background)
+  const droneExtentBox = useMemo(() => {
+    const refParcel = selectedParcel || parcels[0];
+    if (!refParcel) {
+      return { x: 180, y: 120, width: 640, height: 460 };
+    }
+    const coords = refParcel.polygon;
+    const svgPts = coords.map(c => geoToSvg(c));
+    const minX = Math.min(...svgPts.map(p => p.x));
+    const maxX = Math.max(...svgPts.map(p => p.x));
+    const minY = Math.min(...svgPts.map(p => p.y));
+    const maxY = Math.max(...svgPts.map(p => p.y));
+
+    const padX = Math.max((maxX - minX) * 0.5, 140);
+    const padY = Math.max((maxY - minY) * 0.5, 110);
+
+    const x = Math.max(30, minX - padX);
+    const y = Math.max(30, minY - padY);
+    const w = Math.min(svgWidth - 60, (maxX - minX) + padX * 2);
+    const h = Math.min(svgHeight - 60, (maxY - minY) + padY * 2);
+
+    return { x, y, width: w, height: h };
+  }, [selectedParcel, parcels, bounds]);
+
   // Pan and drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.target instanceof SVGElement && e.target.classList.contains('interactive-parcel')) {
@@ -257,8 +281,9 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
             className={`px-2 py-1 rounded-md transition-colors ${
               showOrtho ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'
             }`}
+            title="Toggle Bounded Drone Aerial Extent (bounded strictly within footprint, never wallpaper)"
           >
-            Drone Ortho
+            Bounded Drone Extent
           </button>
           <button
             onClick={() => setShowLegacy(!showLegacy)}
@@ -293,7 +318,7 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
             SAM Masks
           </button>
 
-          {/* Upload Drone Image Button & Active Pill */}
+          {/* AI Drone Border Studio Trigger */}
           <div className="h-4 w-px bg-slate-800 mx-1"></div>
           {onOpenUploadDrone && (
             <button
@@ -301,13 +326,17 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
               id="map-upload-drone-btn"
               className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer font-medium ${
                 droneImage
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                   : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
               }`}
-              title="Upload / Replace Drone Image from File Explorer"
+              title="Open AI Drone Border & Boundary Bounding Studio"
             >
-              <Upload className="h-3 w-3 text-emerald-400" />
-              <span>{droneImage ? 'Ortho: ' + droneImage.name.split('.')[0].slice(0, 14) + '...' : 'Upload Drone Ortho'}</span>
+              <Sparkles className="h-3 w-3 text-emerald-400" />
+              <span>
+                {droneImage 
+                  ? `AI Drone Borders (${droneImage.detectedBorders?.length || 'Bounded'})` 
+                  : 'Upload & Bound Drone Borders'}
+              </span>
             </button>
           )}
         </div>
@@ -390,6 +419,17 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
               <filter id="glow-conflict" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#f43f5e" floodOpacity="0.8" />
               </filter>
+
+              {/* Clip path for bounded drone aerial footprint */}
+              <clipPath id="boundedDroneClip">
+                <rect 
+                  x={droneExtentBox.x} 
+                  y={droneExtentBox.y} 
+                  width={droneExtentBox.width} 
+                  height={droneExtentBox.height} 
+                  rx="10" 
+                />
+              </clipPath>
             </defs>
 
             {/* Base Coordinate Grid Lines */}
@@ -402,45 +442,88 @@ export const WebGisMap: React.FC<WebGisMapProps> = ({
               ))}
             </g>
 
-            {/* 1. Drone Orthomosaic Background Layer */}
-            {showOrtho && (
-              <g className="drone-orthomosaic-layer">
-                {droneImage ? (
-                  <image 
-                    href={droneImage.url} 
-                    x="0" 
-                    y="0" 
-                    width={svgWidth} 
-                    height={svgHeight} 
-                    preserveAspectRatio="xMidYMid slice" 
-                    opacity={droneImage.opacity ?? 0.88} 
-                  />
-                ) : (
-                  <rect width={svgWidth} height={svgHeight} fill="url(#orthoPattern)" />
-                )}
-                {/* Simulated Road Network & Pavement */}
-                <path 
-                  d="M0 320 Q300 315 550 330 T1000 340" 
-                  stroke="#334155" 
-                  strokeWidth="28" 
-                  fill="none" 
-                  opacity={droneImage ? 0.6 : 1}
+            {/* 1. Base GIS Technical Basemap (ALWAYS clean map background, never overridden with raw wallpaper) */}
+            <rect width={svgWidth} height={svgHeight} fill="url(#orthoPattern)" />
+
+            {/* Simulated Road Network & Pavement */}
+            <path 
+              d="M0 320 Q300 315 550 330 T1000 340" 
+              stroke="#334155" 
+              strokeWidth="28" 
+              fill="none" 
+              opacity={droneImage ? 0.7 : 1}
+            />
+            <path 
+              d="M0 320 Q300 315 550 330 T1000 340" 
+              stroke="#f1f5f9" 
+              strokeWidth="1.5" 
+              strokeDasharray="10 8" 
+              fill="none" 
+              opacity={droneImage ? 0.8 : 1}
+            />
+            <path 
+              d="M480 0 L490 700" 
+              stroke="#334155" 
+              strokeWidth="20" 
+              fill="none" 
+              opacity={droneImage ? 0.7 : 1}
+            />
+
+            {/* 2. Bounded Drone Aerial Survey Extent (Bounded strictly within its footprint, NEVER full background) */}
+            {showOrtho && droneImage && (
+              <g className="bounded-drone-aerial-extent">
+                {/* Georeferenced Bounded Drone Image Patch */}
+                <image 
+                  href={droneImage.url} 
+                  x={droneExtentBox.x} 
+                  y={droneExtentBox.y} 
+                  width={droneExtentBox.width} 
+                  height={droneExtentBox.height} 
+                  preserveAspectRatio="xMidYMid slice" 
+                  clipPath="url(#boundedDroneClip)"
+                  opacity={droneImage.opacity ?? 0.88} 
                 />
-                <path 
-                  d="M0 320 Q300 315 550 330 T1000 340" 
-                  stroke="#f1f5f9" 
-                  strokeWidth="1.5" 
-                  strokeDasharray="10 8" 
+
+                {/* Bounded Boundary Frame & Dashed Flight Extent Border */}
+                <rect 
+                  x={droneExtentBox.x} 
+                  y={droneExtentBox.y} 
+                  width={droneExtentBox.width} 
+                  height={droneExtentBox.height} 
+                  rx="10"
                   fill="none" 
-                  opacity={droneImage ? 0.7 : 1}
+                  stroke="#10b981" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="8 6"
                 />
-                <path 
-                  d="M480 0 L490 700" 
-                  stroke="#334155" 
-                  strokeWidth="20" 
-                  fill="none" 
-                  opacity={droneImage ? 0.6 : 1}
+
+                {/* Corner Survey Flight Coordinates */}
+                <circle cx={droneExtentBox.x} cy={droneExtentBox.y} r="5" fill="#10b981" />
+                <circle cx={droneExtentBox.x + droneExtentBox.width} cy={droneExtentBox.y} r="5" fill="#10b981" />
+                <circle cx={droneExtentBox.x + droneExtentBox.width} cy={droneExtentBox.y + droneExtentBox.height} r="5" fill="#10b981" />
+                <circle cx={droneExtentBox.x} cy={droneExtentBox.y + droneExtentBox.height} r="5" fill="#10b981" />
+
+                {/* Bounded Drone Flight Extent Header Tag */}
+                <rect 
+                  x={droneExtentBox.x} 
+                  y={Math.max(8, droneExtentBox.y - 24)} 
+                  width="380" 
+                  height="22" 
+                  rx="4" 
+                  fill="#0b1120" 
+                  stroke="#10b981" 
+                  strokeWidth="1"
                 />
+                <text 
+                  x={droneExtentBox.x + 8} 
+                  y={Math.max(23, droneExtentBox.y - 9)} 
+                  fill="#34d399" 
+                  fontSize="11" 
+                  fontWeight="bold" 
+                  fontFamily="monospace"
+                >
+                  ⚡ BOUNDED DRONE SURVEY EXTENT (5cm/px • {droneImage.name.slice(0, 22)})
+                </text>
               </g>
             )}
 

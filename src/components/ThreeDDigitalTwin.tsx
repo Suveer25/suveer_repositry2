@@ -31,7 +31,15 @@ export const ThreeDDigitalTwin: React.FC<ThreeDDigitalTwinProps> = ({
   const [showVerticalCadastre, setShowVerticalCadastre] = useState(true);
   const [selectedFloorUnit, setSelectedFloorUnit] = useState<string | null>(null);
 
-  const activeParcel = selectedParcel || parcels[0];
+  const activeParcel = selectedParcel || parcels[0] || null;
+
+  if (!activeParcel) {
+    return (
+      <div className="w-full h-[calc(100vh-125px)] min-h-[620px] bg-slate-950 flex items-center justify-center text-slate-400">
+        <p>No cadastral parcels available for 3D digital twin rendering.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-[calc(100vh-125px)] min-h-[620px] bg-slate-950 flex flex-col lg:flex-row overflow-hidden">

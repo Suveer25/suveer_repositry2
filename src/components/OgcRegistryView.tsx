@@ -12,6 +12,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Parcel } from '../types';
+import { downloadDatasetPdf } from '../utils/generateDatasetPdf';
 
 interface OgcRegistryViewProps {
   parcels: Parcel[];
@@ -115,6 +116,15 @@ export const OgcRegistryView: React.FC<OgcRegistryViewProps> = ({
           >
             <FileCode className="h-4 w-4 text-blue-400" />
             <span>Export SQL</span>
+          </button>
+
+          <button
+            onClick={() => downloadDatasetPdf()}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Download Drone & Cadastral Dataset Directory in PDF"
+          >
+            <FileText className="h-4 w-4 text-emerald-400" />
+            <span>Datasets Catalog (PDF)</span>
           </button>
         </div>
       </div>
